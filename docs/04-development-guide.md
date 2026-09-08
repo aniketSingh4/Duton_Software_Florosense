@@ -151,4 +151,4 @@ If the feature must appear as a **tab on `/dashboard`**, that tab list lives in 
 | Where is the JWT stored? | Browser `localStorage` (`duton_access_token`) |
 | Who supplies live PM numbers? | Florosense cloud, cached in `sensor_readings` |
 
-Back to the [docs index](README.md).
+Back to the [docs index](INDEX.md).

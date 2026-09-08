@@ -13,11 +13,12 @@ Duton_Software_Florosense/
 
 | Document | What it covers |
 |----------|----------------|
-| [docs/README.md](docs/README.md) | Index of all reference docs |
+| [docs/INDEX.md](docs/INDEX.md) | Index of all reference docs |
 | [docs/01-system-overview.md](docs/01-system-overview.md) | How both folders work together (diagrams) |
 | [docs/02-frontend-guide.md](docs/02-frontend-guide.md) | Frontend entry point, routes, folder map |
 | [docs/03-backend-guide.md](docs/03-backend-guide.md) | Backend entry point, APIs, folder map |
 | [docs/04-development-guide.md](docs/04-development-guide.md) | How to run locally and how a request flows |
+| [docs/05-concepts-frameworks-workflow.md](docs/05-concepts-frameworks-workflow.md) | Frameworks, domain concepts, workflows |
 
 ## Quick start
 

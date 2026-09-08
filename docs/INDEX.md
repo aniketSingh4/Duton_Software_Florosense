@@ -8,6 +8,7 @@ Read these in order if you are new to the codebase. Each file has diagrams you c
 | 2 | [02-frontend-guide.md](02-frontend-guide.md) | `duton-frontend` entry point, pages, components, API client |
 | 3 | [03-backend-guide.md](03-backend-guide.md) | `duton-backend` entry point, routes, services, MongoDB |
 | 4 | [04-development-guide.md](04-development-guide.md) | Local setup, env vars, request walkthrough, where to add features |
+| 5 | [05-concepts-frameworks-workflow.md](05-concepts-frameworks-workflow.md) | Frameworks, domain concepts, folder “why”, end-to-end workflows |
 
 ## What this product is
 
