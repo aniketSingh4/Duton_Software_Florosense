@@ -19,6 +19,7 @@ Duton_Software_Florosense/
 | [docs/03-backend-guide.md](docs/03-backend-guide.md) | Backend entry point, APIs, folder map |
 | [docs/04-development-guide.md](docs/04-development-guide.md) | How to run locally and how a request flows |
 | [docs/05-concepts-frameworks-workflow.md](docs/05-concepts-frameworks-workflow.md) | Frameworks, domain concepts, workflows |
+| [docs/DUTON-SOP-Development-Runbook.pdf](docs/DUTON-SOP-Development-Runbook.pdf) | Printable SOP runbook (start, login, sensors, tickets) |
 
 ## Quick start
 

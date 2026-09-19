@@ -9,6 +9,7 @@ Read these in order if you are new to the codebase. Each file has diagrams you c
 | 3 | [03-backend-guide.md](03-backend-guide.md) | `duton-backend` entry point, routes, services, MongoDB |
 | 4 | [04-development-guide.md](04-development-guide.md) | Local setup, env vars, request walkthrough, where to add features |
 | 5 | [05-concepts-frameworks-workflow.md](05-concepts-frameworks-workflow.md) | Frameworks, domain concepts, folder “why”, end-to-end workflows |
+| SOP | [DUTON-SOP-Development-Runbook.pdf](DUTON-SOP-Development-Runbook.pdf) | Printable SOP: run steps, code extracts, purpose of each file |
 
 ## What this product is
 
