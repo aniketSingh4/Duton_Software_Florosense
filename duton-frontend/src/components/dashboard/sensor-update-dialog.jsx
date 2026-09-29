@@ -12,31 +12,53 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+
+function toDateInput(value) {
+  if (!value) return ""
+  return String(value).slice(0, 10)
+}
 
 export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
   const [formData, setFormData] = useState({
+    sensorId: "",
+    siteId: "",
     name: "",
+    clientName: "",
+    siteName: "",
     location: "",
-    identifier: "",
     latitude: "",
     longitude: "",
     spocName: "",
     spocContact: "",
     installationDate: "",
+    remark: "",
+    remarkDate: "",
   })
 
   useEffect(() => {
     if (sensor) {
+      const storedName = sensor.sensor_name || ""
+      const fallbackName =
+        storedName ||
+        (sensor.name && sensor.name !== sensor.sensor_id && sensor.name !== sensor.identifier
+          ? sensor.name
+          : "")
+
       setFormData({
-        name: sensor.name || "",
-        location: sensor.location || "",
-        identifier: sensor.identifier || "",
+        sensorId: sensor.sensor_id || "",
+        siteId: sensor.device_id || sensor.site_id || "",
+        name: fallbackName,
+        clientName: sensor.client_name || "",
+        siteName: sensor.site_name || "",
+        location: sensor.location && sensor.location !== "Unknown Location" ? sensor.location : "",
         latitude: sensor.latitude?.toString() || "",
         longitude: sensor.longitude?.toString() || "",
         spocName: sensor.spoc || "",
         spocContact: sensor.spocContact || "",
-        // Normalise ISO datetime -> yyyy-mm-dd for the date input
-        installationDate: sensor.installationDate ? String(sensor.installationDate).slice(0, 10) : "",
+        installationDate: toDateInput(sensor.installationDate),
+        remark: sensor.remark || "",
+        remarkDate: toDateInput(sensor.remarkDate),
       })
     }
   }, [sensor])
@@ -45,14 +67,18 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
     e.preventDefault()
     const updatedSensor = {
       ...sensor,
-      name: formData.name,
+      sensor_name: formData.name,
+      device_id: sensor.device_id || "",
+      client_name: formData.clientName,
+      site_name: formData.siteName,
       location: formData.location,
-      identifier: formData.identifier,
       latitude: parseFloat(formData.latitude) || sensor.latitude,
       longitude: parseFloat(formData.longitude) || sensor.longitude,
       spoc: formData.spocName,
       spocContact: formData.spocContact,
       installationDate: formData.installationDate || null,
+      remark: formData.remark,
+      remarkDate: formData.remarkDate || null,
     }
     onSave(updatedSensor)
     onOpenChange(false)
@@ -67,46 +93,82 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Update Sensor</DialogTitle>
           <DialogDescription>
-            Update the sensor information. Note: Sensor Name cannot be changed. Click save when you&apos;re done.
+            Update the sensor details. Sensor ID and site ID stay unchanged.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Sensor Name (Cannot be changed)</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                disabled
-                className="bg-muted cursor-not-allowed"
-                placeholder="Sensor name"
-                readOnly
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="sensorId">Sensor ID</Label>
+                <Input
+                  id="sensorId"
+                  value={formData.sensorId}
+                  disabled
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="siteId">Site ID</Label>
+                <Input
+                  id="siteId"
+                  value={formData.siteId}
+                  disabled
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
+                />
+              </div>
             </div>
+
+            {/* <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="name">Sensor Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  placeholder="Enter sensor name"
+                />
+              </div>
+            </div> */}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="clientName">Client Company</Label>
+                <Input
+                  id="clientName"
+                  value={formData.clientName}
+                  onChange={(e) => handleChange("clientName", e.target.value)}
+                  placeholder="Enter client company name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="siteName">Site Name</Label>
+                <Input
+                  id="siteName"
+                  value={formData.siteName}
+                  onChange={(e) => handleChange("siteName", e.target.value)}
+                  placeholder="Enter site name"
+                />
+              </div>
+            </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
+              <Label htmlFor="location">Address</Label>
+              <Textarea
                 id="location"
                 value={formData.location}
                 onChange={(e) => handleChange("location", e.target.value)}
                 placeholder="Enter location address"
-                required
+                rows={2}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="identifier">Identifier</Label>
-              <Input
-                id="identifier"
-                value={formData.identifier}
-                onChange={(e) => handleChange("identifier", e.target.value)}
-                placeholder="Enter sensor identifier"
-                required
-              />
-            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="latitude">Latitude</Label>
@@ -117,7 +179,6 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
                   value={formData.latitude}
                   onChange={(e) => handleChange("latitude", e.target.value)}
                   placeholder="28.6139"
-                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -129,10 +190,10 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
                   value={formData.longitude}
                   onChange={(e) => handleChange("longitude", e.target.value)}
                   placeholder="77.2090"
-                  required
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="spocName">SPOC Name</Label>
@@ -153,6 +214,7 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
                 />
               </div>
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="installationDate">Installation Date</Label>
               <Input
@@ -162,6 +224,27 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
                 onChange={(e) => handleChange("installationDate", e.target.value)}
               />
             </div>
+
+            {/* <div className="grid gap-2">
+              <Label htmlFor="remark">Remark</Label>
+              <Textarea
+                id="remark"
+                value={formData.remark}
+                onChange={(e) => handleChange("remark", e.target.value)}
+                placeholder="Enter any remarks or notes"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="remarkDate">Remark Date</Label>
+              <Input
+                id="remarkDate"
+                type="date"
+                value={formData.remarkDate}
+                onChange={(e) => handleChange("remarkDate", e.target.value)}
+              />
+            </div> */}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -174,4 +257,3 @@ export function SensorUpdateDialog({ sensor, open, onOpenChange, onSave }) {
     </Dialog>
   )
 }
-

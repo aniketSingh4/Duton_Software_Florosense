@@ -24,7 +24,9 @@ import {
 import { PRIORITY_LEVELS, STATUS_FLOW } from "@/lib/support-tickets"
 import { useSupportTickets } from "@/hooks/use-support-tickets"
 import { useTicketSensors } from "@/hooks/use-ticket-sensors"
-import { addSupportTicketReply, updateSupportTicket, deleteSupportTicket, fetchAssignees, getUserSites, createAssignee } from "@/utils/api"
+import { addSupportTicketReply, updateSupportTicket, deleteSupportTicket, fetchAssignees, getUserSites, createAssignee, updateAssignee, deleteAssignee } from "@/utils/api"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { MoreVertical, Pencil, Trash2, BarChart3 } from "lucide-react"
 import {
   DropdownMenu,
@@ -80,8 +82,19 @@ export default function TicketCenterPage() {
   const [isBuilder, setIsBuilder] = useState(false)
   const [assignedSites, setAssignedSites] = useState([])
   const [assigneeUsername, setAssigneeUsername] = useState("")
+  const [centerTab, setCenterTab] = useState("tickets")
   const [createAssigneeDialogOpen, setCreateAssigneeDialogOpen] = useState(false)
   const [creatingAssignee, setCreatingAssignee] = useState(false)
+  const [editingAssignee, setEditingAssignee] = useState(null)
+  const [editAssigneeForm, setEditAssigneeForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    isActive: true,
+  })
+  const [savingAssignee, setSavingAssignee] = useState(false)
+  const [deleteAssigneeTarget, setDeleteAssigneeTarget] = useState(null)
+  const [deletingAssignee, setDeletingAssignee] = useState(false)
   const [newAssignee, setNewAssignee] = useState({
     fullName: "",
     email: "",
@@ -811,6 +824,62 @@ export default function TicketCenterPage() {
     }
   }
 
+  const openEditAssignee = (assignee) => {
+    setEditingAssignee(assignee)
+    setEditAssigneeForm({
+      fullName: assignee.full_name || "",
+      email: assignee.email || "",
+      password: "",
+      isActive: assignee.is_active !== false,
+    })
+  }
+
+  const handleSaveAssignee = async () => {
+    if (!editingAssignee?.username) return
+    if (!editAssigneeForm.fullName.trim() || !editAssigneeForm.email.trim()) {
+      toast.error("Please fill name and email")
+      return
+    }
+    if (editAssigneeForm.password && editAssigneeForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters long")
+      return
+    }
+
+    try {
+      setSavingAssignee(true)
+      await updateAssignee(editingAssignee.username, {
+        full_name: editAssigneeForm.fullName.trim(),
+        email: editAssigneeForm.email.trim(),
+        password: editAssigneeForm.password,
+        is_active: editAssigneeForm.isActive,
+      })
+      const refreshedAssignees = await fetchAssignees()
+      setAssignees(Array.isArray(refreshedAssignees) ? refreshedAssignees : [])
+      toast.success("Assignee updated successfully")
+      setEditingAssignee(null)
+    } catch (error) {
+      toast.error(error?.message || "Failed to update assignee")
+    } finally {
+      setSavingAssignee(false)
+    }
+  }
+
+  const handleDeleteAssignee = async () => {
+    if (!deleteAssigneeTarget?.username) return
+    try {
+      setDeletingAssignee(true)
+      await deleteAssignee(deleteAssigneeTarget.username)
+      const refreshedAssignees = await fetchAssignees()
+      setAssignees(Array.isArray(refreshedAssignees) ? refreshedAssignees : [])
+      toast.success("Assignee deleted successfully")
+      setDeleteAssigneeTarget(null)
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete assignee")
+    } finally {
+      setDeletingAssignee(false)
+    }
+  }
+
   const renderTicketStatusBadge = (status) => {
     const statusStyles = {
       Open: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-200",
@@ -880,17 +949,18 @@ export default function TicketCenterPage() {
         <SupportTicketActions showTicketCenterLink={false} hideRaiseTicket={isAssignee} />
       </div>
 
-      {/* Performance Modal Button and Export Button - Top Right, above card section */}
       {isAdmin && (
+        <Tabs value={centerTab} onValueChange={setCenterTab}>
+          <TabsList>
+            <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="assignees">All Assignees</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
+
+      {/* Performance Modal Button and Export Button - Top Right, above card section */}
+      {isAdmin && centerTab === "tickets" && (
         <div className="flex justify-end gap-3 mb-5 -mt-15">
-          <Button
-            variant="outline"
-            onClick={() => setCreateAssigneeDialogOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <UserRoundPlus className="h-4 w-4" />
-            Add Assignee
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -935,6 +1005,69 @@ export default function TicketCenterPage() {
         </div>
       )}
 
+      {isAdmin && centerTab === "assignees" && (
+        <div className="rounded-lg border bg-card shadow-sm p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">All Assignees</h2>
+              <p className="text-sm text-muted-foreground">Add, edit, or remove assignee accounts.</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setCreateAssigneeDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <UserRoundPlus className="h-4 w-4" />
+              Add Assignee
+            </Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadingAssignees && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">Loading assignees...</TableCell>
+                </TableRow>
+              )}
+              {!loadingAssignees && assignees.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">No assignees found</TableCell>
+                </TableRow>
+              )}
+              {!loadingAssignees && assignees.map((assignee) => (
+                <TableRow key={assignee.id || assignee.username}>
+                  <TableCell>{assignee.full_name || "-"}</TableCell>
+                  <TableCell>{assignee.email || "-"}</TableCell>
+                  <TableCell>{assignee.username}</TableCell>
+                  <TableCell>{assignee.is_active === false ? "Inactive" : "Active"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => openEditAssignee(assignee)}>
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setDeleteAssigneeTarget(assignee)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {(!isAdmin || centerTab === "tickets") && (
       <div className="rounded-lg border bg-card shadow-sm p-4 space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-1">
@@ -1488,6 +1621,7 @@ export default function TicketCenterPage() {
           })}
         </div>
       </div>
+      )}
 
       <TicketEditDialog
         ticket={selectedTicket}
@@ -1595,6 +1729,89 @@ export default function TicketCenterPage() {
                 disabled={creatingAssignee}
               >
                 {creatingAssignee ? "Creating..." : "Create Assignee"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isAdmin && (
+        <Dialog open={Boolean(editingAssignee)} onOpenChange={(open) => { if (!open && !savingAssignee) setEditingAssignee(null) }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Assignee</DialogTitle>
+              <DialogDescription>
+                Update assignee details. Username cannot be changed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-assignee-username">Username</Label>
+                <Input id="edit-assignee-username" value={editingAssignee?.username || ""} disabled readOnly className="bg-muted cursor-not-allowed" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-assignee-name">Name</Label>
+                <Input
+                  id="edit-assignee-name"
+                  value={editAssigneeForm.fullName}
+                  onChange={(event) => setEditAssigneeForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-assignee-email">Email</Label>
+                <Input
+                  id="edit-assignee-email"
+                  type="email"
+                  value={editAssigneeForm.email}
+                  onChange={(event) => setEditAssigneeForm((prev) => ({ ...prev, email: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-assignee-password">New password</Label>
+                <Input
+                  id="edit-assignee-password"
+                  type="password"
+                  value={editAssigneeForm.password}
+                  onChange={(event) => setEditAssigneeForm((prev) => ({ ...prev, password: event.target.value }))}
+                  placeholder="Leave blank to keep the current password"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={editAssigneeForm.isActive}
+                  onChange={(event) => setEditAssigneeForm((prev) => ({ ...prev, isActive: event.target.checked }))}
+                />
+                Active
+              </label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingAssignee(null)} disabled={savingAssignee}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSaveAssignee} disabled={savingAssignee}>
+                {savingAssignee ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {isAdmin && (
+        <Dialog open={Boolean(deleteAssigneeTarget)} onOpenChange={(open) => { if (!open && !deletingAssignee) setDeleteAssigneeTarget(null) }}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>Delete Assignee</DialogTitle>
+              <DialogDescription>
+                Delete {deleteAssigneeTarget?.full_name || deleteAssigneeTarget?.username}? Existing tickets keep their assignee name.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDeleteAssigneeTarget(null)} disabled={deletingAssignee}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={handleDeleteAssignee} disabled={deletingAssignee}>
+                {deletingAssignee ? "Deleting..." : "Delete"}
               </Button>
             </DialogFooter>
           </DialogContent>

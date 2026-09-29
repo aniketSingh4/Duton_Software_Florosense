@@ -245,6 +245,10 @@ export function LoginForm({
         }
       }
 
+      if (typeof window !== "undefined" && userType !== "admin") {
+        sessionStorage.setItem("duton_amc_login_alert", "1")
+      }
+
       router.push("/dashboard")
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.")

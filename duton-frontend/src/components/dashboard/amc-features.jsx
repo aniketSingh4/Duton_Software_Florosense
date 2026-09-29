@@ -164,33 +164,46 @@ function AmcClientsPanel() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead className="text-center">Tracked Sensors</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-center">AMC</TableHead>
-                <TableHead className="text-center">Manage</TableHead>
+              <TableRow className="border-b-0 bg-slate-900 hover:bg-slate-900">
+                <TableHead className="font-bold uppercase tracking-wide text-sky-100">Username</TableHead>
+                <TableHead className="font-bold uppercase tracking-wide text-sky-100">Client Name</TableHead>
+                <TableHead className="font-bold uppercase tracking-wide text-sky-100">Email</TableHead>
+                <TableHead className="text-center font-bold uppercase tracking-wide text-sky-100">Tracked Sensors</TableHead>
+                <TableHead className="text-center font-bold uppercase tracking-wide text-sky-100">Status</TableHead>
+                <TableHead className="text-center font-bold uppercase tracking-wide text-sky-100">AMC</TableHead>
+                <TableHead className="text-center font-bold uppercase tracking-wide text-sky-100">Manage</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.map((client) => (
-                <TableRow key={client.username}>
-                  <TableCell className="font-medium">{client.username}</TableCell>
-                  <TableCell>{client.client_name || "-"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{client.email || "-"}</TableCell>
-                  <TableCell className="text-center">{client.tracked_sensor_count}</TableCell>
+                <TableRow
+                  key={client.username}
+                  className={
+                    !client.amc_enabled
+                      ? ""
+                      : client.alert_active
+                        ? "bg-amber-50/80 hover:bg-amber-50 dark:bg-amber-950/20"
+                        : "bg-teal-50/70 hover:bg-teal-50 dark:bg-teal-950/20"
+                  }
+                >
+                  <TableCell className="font-semibold text-indigo-800 dark:text-indigo-200">{client.username}</TableCell>
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-100">{client.client_name || "-"}</TableCell>
+                  <TableCell className="text-sm text-sky-700 dark:text-sky-300">{client.email || "-"}</TableCell>
+                  <TableCell className="text-center font-semibold tabular-nums text-violet-700 dark:text-violet-300">{client.tracked_sensor_count}</TableCell>
                   <TableCell className="text-center">
                     {!client.amc_enabled ? (
-                      <Badge variant="outline">Off</Badge>
+                      <Badge variant="outline" className="border-slate-300 font-bold uppercase tracking-wide text-slate-500">
+                        Off
+                      </Badge>
                     ) : client.alert_active ? (
-                      <Badge variant="destructive">
+                      <Badge className="border-transparent bg-amber-500 font-bold uppercase tracking-wide text-white">
                         <AlertTriangle className="h-3 w-3" />
                         {client.alert_sensor_count} expiring
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Tracking</Badge>
+                      <Badge className="border-transparent bg-teal-600 font-bold uppercase tracking-wide text-white">
+                        Tracking
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-center">
@@ -202,7 +215,7 @@ function AmcClientsPanel() {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Button variant="ghost" size="sm" onClick={() => openDialog(client)} title="Manage sensors and dates">
+                    <Button variant="ghost" size="sm" className="text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800" onClick={() => openDialog(client)} title="Manage sensors and dates">
                       <Settings2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
@@ -439,12 +452,33 @@ function AmcExpiryPanel() {
               size="sm"
               variant={type === f.value ? "default" : "outline"}
               onClick={() => setType(f.value)}
+              className={
+                type === f.value
+                  ? f.value === "amc"
+                    ? "bg-indigo-700 font-bold uppercase tracking-wide text-white hover:bg-indigo-800"
+                    : f.value === "warranty"
+                      ? "bg-sky-700 font-bold uppercase tracking-wide text-white hover:bg-sky-800"
+                      : "bg-slate-900 font-bold uppercase tracking-wide text-white hover:bg-slate-800"
+                  : f.value === "amc"
+                    ? "border-indigo-300 font-semibold uppercase tracking-wide text-indigo-700 hover:bg-indigo-50"
+                    : f.value === "warranty"
+                      ? "border-sky-300 font-semibold uppercase tracking-wide text-sky-700 hover:bg-sky-50"
+                      : "border-slate-300 font-semibold uppercase tracking-wide text-slate-700 hover:bg-slate-50"
+              }
             >
               {f.label}
             </Button>
           ))}
-          <span className="ml-2 text-sm text-muted-foreground">
-            Expiring within {AMC_ALERT_WINDOW_DAYS} days · Warranty {counts.warranty} · AMC {counts.amc}
+          <span className="ml-1 inline-flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              Within {AMC_ALERT_WINDOW_DAYS} days
+            </span>
+            <span className="rounded-full bg-sky-100 px-2.5 py-0.5 tabular-nums text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+              Warranty {counts.warranty}
+            </span>
+            <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 tabular-nums text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">
+              AMC {counts.amc}
+            </span>
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -452,11 +486,11 @@ function AmcExpiryPanel() {
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={exportExcel} disabled={isExporting || isLoading || rows.length === 0}>
+          <Button variant="outline" size="sm" className="border-emerald-400 text-emerald-800 hover:bg-emerald-50" onClick={exportExcel} disabled={isExporting || isLoading || rows.length === 0}>
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Excel
           </Button>
-          <Button variant="outline" size="sm" onClick={exportPdf} disabled={isExporting || isLoading || rows.length === 0}>
+          <Button variant="outline" size="sm" className="border-rose-400 text-rose-800 hover:bg-rose-50" onClick={exportPdf} disabled={isExporting || isLoading || rows.length === 0}>
             <FileText className="mr-2 h-4 w-4" />
             PDF
           </Button>
@@ -477,43 +511,60 @@ function AmcExpiryPanel() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Site</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Sensor ID</TableHead>
-                  <TableHead>Installation</TableHead>
-                  <TableHead>AMC Start</TableHead>
-                  <TableHead>Expiry Date</TableHead>
-                  <TableHead>Remaining</TableHead>
-                  <TableHead>Contact</TableHead>
+                <TableRow className="border-b-0 bg-slate-900 hover:bg-slate-900">
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Type</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Client</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Site</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Address</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Sensor ID</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Installation</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">AMC Start</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Expiry Date</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Remaining</TableHead>
+                  <TableHead className="font-bold uppercase tracking-wide text-sky-100">Contact</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => {
                   const expired = row.days_remaining !== null && row.days_remaining < 0
                   return (
-                    <TableRow key={`${row.expiry_type}-${row.sensor_id}`}>
+                    <TableRow
+                      key={`${row.expiry_type}-${row.sensor_id}`}
+                      className={expired ? "bg-rose-50 hover:bg-rose-100/80 dark:bg-rose-950/30" : "bg-amber-50/80 hover:bg-amber-100/70 dark:bg-amber-950/20"}
+                    >
                       <TableCell>
-                        <Badge variant={row.expiry_type === "amc" ? "default" : "secondary"}>
+                        <Badge
+                          className={
+                            row.expiry_type === "amc"
+                              ? "border-transparent bg-indigo-700 font-bold uppercase tracking-wide text-white"
+                              : "border-transparent bg-sky-700 font-bold uppercase tracking-wide text-white"
+                          }
+                        >
                           {row.expiry_type === "amc" ? "AMC" : "Warranty"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-semibold text-slate-800 dark:text-slate-100">
                         {row.client_name}
-                        <div className="text-xs text-muted-foreground">{row.username}</div>
+                        <div className="text-xs font-medium text-indigo-600 dark:text-indigo-300">{row.username}</div>
                       </TableCell>
-                      <TableCell>{row.site_name}</TableCell>
-                      <TableCell className="max-w-56 truncate" title={row.site_address}>
+                      <TableCell className="text-slate-700 dark:text-slate-200">{row.site_name}</TableCell>
+                      <TableCell className="max-w-56 truncate text-slate-600" title={row.site_address}>
                         {row.site_address}
                       </TableCell>
-                      <TableCell>{row.sensor_id}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatYmd(row.installation_date)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatYmd(row.amc_renewal_date)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{formatYmd(row.expiry_date)}</TableCell>
-                      <TableCell className={`whitespace-nowrap ${expired ? "text-destructive font-medium" : ""}`}>
-                        {formatDaysRemaining(row.days_remaining)}
+                      <TableCell className="font-semibold tabular-nums text-violet-700 dark:text-violet-300">{row.sensor_id}</TableCell>
+                      <TableCell className="whitespace-nowrap font-semibold tabular-nums">{formatYmd(row.installation_date)}</TableCell>
+                      <TableCell className="whitespace-nowrap font-semibold tabular-nums">{formatYmd(row.amc_renewal_date)}</TableCell>
+                      <TableCell className="whitespace-nowrap font-semibold tabular-nums">{formatYmd(row.expiry_date)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {expired ? (
+                          <Badge className="border-transparent bg-rose-600 font-bold tabular-nums text-white">
+                            {formatDaysRemaining(row.days_remaining)}
+                          </Badge>
+                        ) : (
+                          <span className="font-bold tabular-nums text-amber-800 dark:text-amber-200">
+                            {formatDaysRemaining(row.days_remaining)}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">{row.spoc_name}</div>
@@ -542,20 +593,27 @@ function AmcExpiryPanel() {
 export function AmcFeatures() {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">AMC Features</h2>
-          <p className="text-sm text-muted-foreground">
-            Track warranty and AMC validity per sensor. Clients see a dashboard alert {AMC_ALERT_WINDOW_DAYS} days
-            before expiry.
-          </p>
+      <div className="overflow-hidden rounded-xl bg-gradient-to-r from-slate-900 via-indigo-900 to-sky-800 px-5 py-4 text-white shadow-md">
+        <h2 className="text-2xl font-bold tracking-tight">AMC Features</h2>
+        <p className="mt-1 text-sm font-medium text-sky-100">
+          Track warranty and AMC validity per sensor. Clients see a dashboard alert {AMC_ALERT_WINDOW_DAYS} days
+          before expiry.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-wide">
+          <span className="rounded-full bg-teal-500/90 px-2.5 py-0.5">Tracking</span>
+          <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-amber-950">Expiring</span>
+          <span className="rounded-full bg-rose-600 px-2.5 py-0.5">Expired</span>
+          <span className="rounded-full bg-indigo-500 px-2.5 py-0.5">AMC</span>
+          <span className="rounded-full bg-sky-500 px-2.5 py-0.5">Warranty</span>
         </div>
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="expiry">
+        <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-100">
+          <TabsTrigger value="clients" className="font-semibold data-[state=active]:bg-indigo-700 data-[state=active]:text-white">
+            Clients
+          </TabsTrigger>
+          <TabsTrigger value="expiry" className="font-semibold data-[state=active]:bg-sky-700 data-[state=active]:text-white">
             <Download className="mr-2 h-4 w-4" />
             Expiry List
           </TabsTrigger>

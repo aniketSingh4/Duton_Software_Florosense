@@ -218,12 +218,16 @@ export function AmcSensorDialog({ open, onOpenChange, client, onSaved }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>AMC / Warranty Tracking — {client?.client_name || client?.username}</DialogTitle>
-          <DialogDescription>
-            Tick the sensors to track. A ticked sensor needs an installation date. Warranty expiry is
-            installation + 1 year. After the warranty ends, enter the AMC renewal date and AMC expiry is
-            renewal + 1 year. The client sees an alert {AMC_ALERT_WINDOW_DAYS} days before expiry.
-          </DialogDescription>
+          <div className="rounded-lg bg-gradient-to-r from-slate-900 via-indigo-800 to-sky-700 px-4 py-3 text-white">
+            <DialogTitle className="text-xl font-bold tracking-tight text-white">
+              AMC / Warranty Tracking — {client?.client_name || client?.username}
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm font-medium text-sky-100">
+              Tick the sensors to track. A ticked sensor needs an installation date. Warranty expiry is
+              installation + 1 year. After the warranty ends, enter the AMC renewal date and AMC expiry is
+              renewal + 1 year. The client sees an alert {AMC_ALERT_WINDOW_DAYS} days before expiry.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         {isLoading ? (
@@ -272,36 +276,66 @@ export function AmcSensorDialog({ open, onOpenChange, client, onSaved }) {
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 text-center">Track</TableHead>
-                    <TableHead>Sensor ID</TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead>Installation Date</TableHead>
-                    <TableHead>Warranty Expiry</TableHead>
-                    <TableHead>AMC Renewal Date</TableHead>
-                    <TableHead>AMC Expiry</TableHead>
-                    <TableHead>Status</TableHead>
+                  <TableRow className="border-b-0 bg-slate-900 hover:bg-slate-900">
+                    <TableHead className="w-12 text-center font-bold uppercase tracking-wide text-sky-100">Track</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">Sensor ID</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">Site</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">Installation Date</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">Warranty Expiry</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">AMC Renewal Date</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">AMC Expiry</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wide text-sky-100">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((row) => {
                     const derived = deriveRow(row)
                     const missing = row.tracked && !row.installation_date
+                    const expired = derived.daysRemaining !== null && derived.daysRemaining < 0
+                    const expiring = derived.alertActive && !expired
+                    const dateTone = (ymd) => {
+                      const days = daysFromToday(ymd)
+                      if (!ymd || days === null) return "tabular-nums"
+                      if (days < 0) return "font-semibold tabular-nums text-rose-700 dark:text-rose-300"
+                      if (days <= AMC_ALERT_WINDOW_DAYS) return "font-semibold tabular-nums text-amber-700 dark:text-amber-200"
+                      return "font-semibold tabular-nums text-teal-700 dark:text-teal-200"
+                    }
                     return (
-                      <TableRow key={row.sensor_id} className={row.tracked ? "" : "opacity-70"}>
-                        <TableCell className="text-center">
+                      <TableRow
+                        key={row.sensor_id}
+                        className={
+                          !row.tracked
+                            ? "opacity-70"
+                            : expired
+                              ? "bg-rose-50 dark:bg-rose-950/30"
+                              : expiring
+                                ? "bg-amber-50/80 dark:bg-amber-950/20"
+                                : "bg-teal-50/40 dark:bg-teal-950/20"
+                        }
+                      >
+                        <TableCell
+                          className={
+                            !row.tracked
+                              ? "text-center"
+                              : expired
+                                ? "border-l-4 border-l-rose-600 text-center"
+                                : expiring
+                                  ? "border-l-4 border-l-amber-500 text-center"
+                                  : "border-l-4 border-l-teal-600 text-center"
+                          }
+                        >
                           <input
                             type="checkbox"
-                            className="h-4 w-4 cursor-pointer accent-green-600"
+                            className="h-4 w-4 cursor-pointer accent-indigo-700"
                             checked={row.tracked}
                             onChange={(e) => updateRow(row.sensor_id, { tracked: e.target.checked })}
                             aria-label={`Track ${row.sensor_id}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-semibold tabular-nums text-violet-800 dark:text-violet-200">
                           {row.sensor_id}
                           {row.is_active === false && (
-                            <Badge variant="outline" className="ml-2 text-[10px]">
+                            <Badge variant="outline" className="ml-2 text-[10px] font-bold uppercase tracking-wide">
                               inactive
                             </Badge>
                           )}
@@ -316,11 +350,13 @@ export function AmcSensorDialog({ open, onOpenChange, client, onSaved }) {
                             required={row.tracked}
                             aria-invalid={missing}
                             onChange={(e) => updateRow(row.sensor_id, { installation_date: e.target.value })}
-                            className={`h-9 w-40 ${missing ? "border-destructive" : ""}`}
+                            className={`h-9 w-40 tabular-nums ${missing ? "border-destructive" : ""}`}
                           />
-                          {missing && <p className="mt-1 text-xs text-destructive">Required</p>}
+                          {missing && <p className="mt-1 text-xs font-semibold text-destructive">Required</p>}
                         </TableCell>
-                        <TableCell className="text-sm">{derived.warrantyExpiry ? formatYmd(derived.warrantyExpiry) : "-"}</TableCell>
+                        <TableCell className={`text-sm ${dateTone(derived.warrantyExpiry)}`}>
+                          {derived.warrantyExpiry ? formatYmd(derived.warrantyExpiry) : "-"}
+                        </TableCell>
                         <TableCell>
                           {row.tracked && derived.renewalAllowed ? (
                             <Input
@@ -328,7 +364,7 @@ export function AmcSensorDialog({ open, onOpenChange, client, onSaved }) {
                               value={row.amc_renewal_date}
                               min={row.installation_date || undefined}
                               onChange={(e) => updateRow(row.sensor_id, { amc_renewal_date: e.target.value })}
-                              className="h-9 w-40"
+                              className="h-9 w-40 tabular-nums"
                             />
                           ) : (
                             <span className="text-xs text-muted-foreground">
@@ -336,20 +372,30 @@ export function AmcSensorDialog({ open, onOpenChange, client, onSaved }) {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm">{derived.amcExpiry ? formatYmd(derived.amcExpiry) : "-"}</TableCell>
+                        <TableCell className={`text-sm ${dateTone(derived.amcExpiry)}`}>
+                          {derived.amcExpiry ? formatYmd(derived.amcExpiry) : "-"}
+                        </TableCell>
                         <TableCell>
                           {!row.tracked ? (
-                            <Badge variant="outline">Not tracked</Badge>
-                          ) : derived.alertActive ? (
-                            <Badge variant="destructive" title={formatDaysRemaining(derived.daysRemaining)}>
+                            <Badge variant="outline" className="font-bold uppercase tracking-wide">
+                              Not tracked
+                            </Badge>
+                          ) : expired ? (
+                            <Badge className="border-transparent bg-rose-600 font-bold uppercase tracking-wide text-white" title={formatDaysRemaining(derived.daysRemaining)}>
+                              {derived.expiryType} · {formatDaysRemaining(derived.daysRemaining)}
+                            </Badge>
+                          ) : expiring ? (
+                            <Badge className="border-transparent bg-amber-500 font-bold uppercase tracking-wide text-white" title={formatDaysRemaining(derived.daysRemaining)}>
                               {derived.expiryType} · {formatDaysRemaining(derived.daysRemaining)}
                             </Badge>
                           ) : derived.nextExpiry ? (
-                            <Badge variant="secondary" title={formatDaysRemaining(derived.daysRemaining)}>
+                            <Badge className="border-transparent bg-teal-600 font-bold uppercase tracking-wide text-white" title={formatDaysRemaining(derived.daysRemaining)}>
                               OK · {formatDaysRemaining(derived.daysRemaining)}
                             </Badge>
                           ) : (
-                            <Badge variant="outline">Set date</Badge>
+                            <Badge variant="outline" className="font-bold uppercase tracking-wide">
+                              Set date
+                            </Badge>
                           )}
                         </TableCell>
                       </TableRow>

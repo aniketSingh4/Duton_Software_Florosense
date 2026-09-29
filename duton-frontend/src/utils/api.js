@@ -95,8 +95,9 @@ export const fetchUserSensors = async () => {
             device_id: sensor.device_id || sensor.sensor_id,
             location: sensor.location || {},
             is_active: sensor.is_active !== false,
+            name: sensor.name || "",
             client_name: sensor.client_name || "",
-            site_name: sensor.site_name || sensor.name || "",
+            site_name: sensor.site_name || "",
             remark: sensor.remark || null,
             remark_date: sensor.remark_date || sensor.remarkDate || null,
             installation_date: sensor.installation_date || sensor.installationDate || null,
@@ -159,8 +160,9 @@ export const fetchUserSensors = async () => {
             device_id: sensor.device_id || sensor.sensor_id,
             location: sensor.location || {},
             is_active: sensor.is_active !== false,
+            name: sensor.name || "",
             client_name: sensor.client_name || "",
-            site_name: sensor.site_name || sensor.name || "",
+            site_name: sensor.site_name || "",
             remark: sensor.remark || null,
             remark_date: sensor.remark_date || sensor.remarkDate || null,
             installation_date: sensor.installation_date || sensor.installationDate || null,
@@ -218,8 +220,9 @@ export const fetchUserSensors = async () => {
             device_id: sensor.device_id || sensor.sensor_id,
             location: sensor.location || {},
             is_active: sensor.is_active !== false,
+            name: sensor.name || "",
             client_name: sensor.client_name || "",
-            site_name: sensor.site_name || sensor.name || "",
+            site_name: sensor.site_name || "",
             remark: sensor.remark || null,
             remark_date: sensor.remark_date || sensor.remarkDate || null,
             installation_date: sensor.installation_date || sensor.installationDate || null,
@@ -278,8 +281,9 @@ export const fetchUserSensors = async () => {
           device_id: sensor.device_id || sensor.sensor_id,
           location: sensor.location || {},
           is_active: sensor.is_active !== false,
+          name: sensor.name || "",
           client_name: sensor.client_name || "",
-          site_name: sensor.site_name || sensor.name || "",
+          site_name: sensor.site_name || "",
           remark: sensor.remark || null,
           remark_date: sensor.remark_date || sensor.remarkDate || null,
           installation_date: sensor.installation_date || sensor.installationDate || null,
@@ -339,8 +343,9 @@ export const fetchUserSensors = async () => {
               device_id: sensor.device_id || sensor.sensor_id,
               location: sensor.location || {},
               is_active: sensor.is_active !== false,
+              name: sensor.name || "",
               client_name: sensor.client_name || "",
-              site_name: sensor.site_name || sensor.name || "",
+              site_name: sensor.site_name || "",
             }))
           }
         } catch (fallbackError) {
@@ -1013,6 +1018,40 @@ export const createAssignee = async ({ full_name, email, username, password, sen
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
     throw new Error(payload?.detail || payload?.message || "Failed to create assignee")
+  }
+
+  return payload
+}
+
+export const updateAssignee = async (username, { full_name, email, password, is_active }) => {
+  const headers = getAuthHeaders()
+  const body = { full_name, email, is_active }
+  if (password) body.password = password
+
+  const response = await fetch(`${TICKET_API_BASE_URL}/assignee/${encodeURIComponent(username)}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(payload?.detail || payload?.message || "Failed to update assignee")
+  }
+
+  return payload
+}
+
+export const deleteAssignee = async (username) => {
+  const headers = getAuthHeaders()
+  const response = await fetch(`${TICKET_API_BASE_URL}/assignee/${encodeURIComponent(username)}`, {
+    method: "DELETE",
+    headers,
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(payload?.detail || payload?.message || "Failed to delete assignee")
   }
 
   return payload

@@ -58,7 +58,7 @@ const PAGE_SIZE = 8
   const ALL_ASSIGNED_SITES_VALUE = "__all_assigned_sites__"
 
 export function DashboardContent() {
-  const [view, setView] = useState("grid")
+  const [view, setView] = useState("table")
   const [sensorItems, setSensorItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState("")
@@ -144,8 +144,10 @@ export function DashboardContent() {
       return {
         id: apiSensor.sensor_id || apiSensor.device_id || apiSensor.identifier || `sensor-${sensorId || "unknown"}`,
         name: apiSensor.name || apiSensor.sensor_name || apiSensor.sensor_id || apiSensor.device_id || "Unknown Sensor",
+        sensor_name: apiSensor.name || apiSensor.sensor_name || "",
         identifier: apiSensor.sensor_id || apiSensor.device_id || apiSensor.identifier,
         site_name: apiSensor.site_name || null,
+        client_name: apiSensor.client_name || "",
         device_id: apiSensor.device_id || null,
         sensor_id: apiSensor.sensor_id || null,
         location:
@@ -565,7 +567,7 @@ export function DashboardContent() {
   }
 
   const handleSave = async (updatedSensor) => {
-    const originalSensorId = selectedSensor?.name || selectedSensor?.identifier || selectedSensor?.id
+    const originalSensorId = selectedSensor?.sensor_id || selectedSensor?.identifier || selectedSensor?.id
 
     if (!originalSensorId) {
       toast.error("Cannot update sensor: Sensor ID not found")
@@ -574,15 +576,20 @@ export function DashboardContent() {
 
     try {
       const updateData = {
-        device_id: selectedSensor?.device_id || updatedSensor.device_id || "",
+        name: updatedSensor.sensor_name || "",
+        device_id: updatedSensor.device_id || "",
+        client_name: updatedSensor.client_name || "",
+        site_name: updatedSensor.site_name || "",
         location: {
-          lat: parseFloat(updatedSensor.latitude) || parseFloat(selectedSensor?.latitude) || 19.076,
-          lng: parseFloat(updatedSensor.longitude) || parseFloat(selectedSensor?.longitude) || 72.8777,
+          lat: parseFloat(updatedSensor.latitude) || parseFloat(selectedSensor?.latitude) || 19.059971,
+          lng: parseFloat(updatedSensor.longitude) || parseFloat(selectedSensor?.longitude) || 72.829933,
           address: updatedSensor.location || "",
         },
         spoc_name: updatedSensor.spoc || "",
         spoc_contact: updatedSensor.spocContact || "",
-        ...(updatedSensor.installationDate && { installation_date: updatedSensor.installationDate }),
+        remark: updatedSensor.remark || "",
+        remark_date: updatedSensor.remarkDate || "",
+        installation_date: updatedSensor.installationDate || "",
       }
 
       await updateSensor(originalSensorId, updateData)
@@ -1298,7 +1305,7 @@ export function DashboardContent() {
           <TabsList className="grid w-full max-w-7xl mx-auto grid-cols-2">
             <TabsTrigger value="management">
               <LayoutGrid className="h-4 w-4 mr-2" />
-              Management
+              Sensor Details
             </TabsTrigger>
             <TabsTrigger value="monitoring">
               <Bell className="h-4 w-4 mr-2" />

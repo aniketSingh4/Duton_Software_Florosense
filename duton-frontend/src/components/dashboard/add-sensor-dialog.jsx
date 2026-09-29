@@ -96,6 +96,7 @@ export function AddSensorDialog({ open, onOpenChange, onSuccess }) {
           address: formData.location.trim() || "",
         },
         is_active: true,
+        name: formData.name.trim(),
         client_name: formData.client_name.trim(),
         site_name: formData.site_name.trim(),
         // Optional fields from Postman collection
