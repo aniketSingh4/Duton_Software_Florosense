@@ -291,7 +291,7 @@ export const listSensors = async (req, res, next) => {
 
 export const createSensor = async (req, res, next) => {
   try {
-    const { sensor_id, device_id, location, is_active, client_name, site_name, spoc_name, spoc_contact, remark, remark_date, installation_date } = req.body;
+    const { sensor_id, device_id, location, is_active, client_name, site_name, name, spoc_name, spoc_contact, remark, remark_date, installation_date } = req.body;
 
     if (!sensor_id) {
       return res.status(400).json({
@@ -313,6 +313,7 @@ export const createSensor = async (req, res, next) => {
       is_active: is_active !== false,
       client_name: client_name || "",
       site_name: site_name || "",
+      name: name || "",
       site_id: req.body.site_id || null,
       site_address: req.body.site_address || null,
       spoc_name: spoc_name || null,
@@ -352,6 +353,7 @@ export const updateSensor = async (req, res, next) => {
       "device_id",
       "location",
       "is_active",
+      "name",
       "client_name",
       "site_name",
       "site_id",

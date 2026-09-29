@@ -70,6 +70,66 @@ router.post("/create", verifyAdminToken, async (req, res, next) => {
   }
 });
 
+// PUT /assignee/:username - Update assignee details (Admin only)
+router.put("/:username", verifyAdminToken, async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    const assignee = await database.getAssigneeByUsername(username);
+    if (!assignee) {
+      return res.status(404).json({ detail: "Assignee not found" });
+    }
+
+    const { full_name, email, password, is_active } = req.body;
+    if (!full_name || !email) {
+      return res.status(400).json({
+        detail: "Name and email are required",
+      });
+    }
+
+    const existingByEmail = await database.getAssigneeByEmail(email);
+    if (existingByEmail && existingByEmail.username !== username) {
+      return res.status(400).json({ detail: "Email already exists" });
+    }
+
+    const updates = {
+      full_name,
+      email,
+      is_active: is_active !== false && is_active !== "false",
+    };
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({
+          detail: "Password must be at least 6 characters long",
+        });
+      }
+      updates.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    const updatedAssignee = await database.updateAssignee(username, updates);
+    return res.json({
+      message: "Assignee updated successfully",
+      assignee: updatedAssignee,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /assignee/:username - Delete assignee (Admin only)
+router.delete("/:username", verifyAdminToken, async (req, res, next) => {
+  try {
+    const { username } = req.params;
+    const deleted = await database.deleteAssignee(username);
+    if (!deleted) {
+      return res.status(404).json({ detail: "Assignee not found" });
+    }
+    return res.json({ message: "Assignee deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // POST /assignee/login - Assignee login
 router.post("/login", async (req, res, next) => {
   try {

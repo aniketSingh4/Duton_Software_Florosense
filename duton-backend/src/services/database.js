@@ -714,6 +714,25 @@ export async function createAssignee(assigneeData) {
   return _serializeAssignee(createdDoc);
 }
 
+export async function updateAssignee(username, updates) {
+  _ensureAssigneeCollection();
+  const result = await assigneesCollection.findOneAndUpdate(
+    { username },
+    { $set: updates },
+    { returnDocument: "after" }
+  );
+  if (!result) {
+    return null;
+  }
+  return _serializeAssignee(result);
+}
+
+export async function deleteAssignee(username) {
+  _ensureAssigneeCollection();
+  const result = await assigneesCollection.deleteOne({ username });
+  return result.deletedCount > 0;
+}
+
 export async function updateAssigneeLastLogin(username) {
   _ensureAssigneeCollection();
   await assigneesCollection.updateOne(
@@ -1176,6 +1195,7 @@ function _serializeSensor(doc) {
     device_id: doc.device_id,
     location: doc.location || {},
     is_active: doc.is_active !== false,
+    name: doc.name || "",
     client_name: doc.client_name,
     site_name: doc.site_name,
     site_id: doc.site_id || null,
@@ -1213,6 +1233,7 @@ export async function createSensor(sensorData) {
     device_id: sensorData.device_id || sensorId,
     location: sensorData.location || {},
     is_active: sensorData.is_active !== false,
+    name: sensorData.name || "",
     client_name: sensorData.client_name,
     site_name: sensorData.site_name,
     site_id: sensorData.site_id || null,
