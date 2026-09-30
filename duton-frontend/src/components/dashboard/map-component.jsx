@@ -72,7 +72,7 @@ function createMarkerIcon(sensor) {
     return L.divIcon({
         className: "aqi-marker",
         iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        iconAnchor: [15, 15],
         html: `<div class="aqi-marker-bubble" style="background:${bg};color:${fg};font-size:${fontSize}px">${label}</div>`,
     })
 }

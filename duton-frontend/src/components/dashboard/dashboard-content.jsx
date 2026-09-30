@@ -52,7 +52,7 @@ const views = [
   { id: "grid", label: "Grid View" },
   { id: "table", label: "Table View" },
   { id: "map", label: "Map View" },
-  { id: "anomalies", label: "Sensor Anomalies" },
+  // { id: "anomalies", label: "Sensor Anomalies" },
 ]
 const PAGE_SIZE = 8
   const ALL_ASSIGNED_SITES_VALUE = "__all_assigned_sites__"
@@ -1309,7 +1309,7 @@ export function DashboardContent() {
             </TabsTrigger>
             <TabsTrigger value="monitoring">
               <Bell className="h-4 w-4 mr-2" />
-              Alerts &amp; AMC
+              Alerts &amp; AMC &amp; Anomalies
             </TabsTrigger>
           </TabsList>
 
@@ -1342,7 +1342,7 @@ export function DashboardContent() {
           {/* Group 2: Alerts, AMC */}
           <TabsContent value="monitoring" className="space-y-6">
             <Tabs defaultValue="alerts" className="w-full">
-              <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-2">
+              <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3">
                 <TabsTrigger value="alerts">
                   <Bell className="h-4 w-4 mr-2" />
                   Alerts
@@ -1351,12 +1351,19 @@ export function DashboardContent() {
                   <ShieldCheck className="h-4 w-4 mr-2" />
                   AMC
                 </TabsTrigger>
+                <TabsTrigger value="anomalies">
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Anomalies
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="alerts" className="space-y-6">
                 <AlertLog />
               </TabsContent>
               <TabsContent value="amc" className="space-y-6">
                 <AmcFeatures />
+              </TabsContent>
+              <TabsContent value="anomalies" className="space-y-6">
+                <SensorAnomaliesView />
               </TabsContent>
             </Tabs>
           </TabsContent>
