@@ -775,16 +775,16 @@ export const getLatestReading = async (req, res, next) => {
           const { applyCalibration } = await import("../utils/calibration.js");
 
           if (data.pm2_5 !== null && data.pm2_5 !== undefined) {
-            data.pm2_5_corrected = applyCalibration(data.pm2_5, calibration);
+            data.pm2_5_corrected = applyCalibration(data.pm2_5, calibration, "pm25");
           }
           if (data.pm10_0 !== null && data.pm10_0 !== undefined) {
-            data.pm10_0_corrected = applyCalibration(data.pm10_0, calibration);
+            data.pm10_0_corrected = applyCalibration(data.pm10_0, calibration, "pm10");
           }
           if (data.pms_2_5 !== null && data.pms_2_5 !== undefined) {
-            data.pms_2_5_corrected = applyCalibration(data.pms_2_5, calibration);
+            data.pms_2_5_corrected = applyCalibration(data.pms_2_5, calibration, "pm25");
           }
           if (data.pms_10 !== null && data.pms_10 !== undefined) {
-            data.pms_10_corrected = applyCalibration(data.pms_10, calibration);
+            data.pms_10_corrected = applyCalibration(data.pms_10, calibration, "pm10");
           }
         }
       } catch (calibrationError) {
@@ -1063,7 +1063,7 @@ export const getSensorChartData = async (req, res, next) => {
         if (rawVal === null || rawVal === undefined) return null;
         const val = Number(rawVal);
         if (calibration && applyCalibration) {
-          return applyCalibration(val, calibration);
+          return applyCalibration(val, calibration, "pm25");
         }
         return val;
       });
@@ -1079,7 +1079,7 @@ export const getSensorChartData = async (req, res, next) => {
         if (rawVal === null || rawVal === undefined) return null;
         const val = Number(rawVal);
         if (calibration && applyCalibration) {
-          return applyCalibration(val, calibration);
+          return applyCalibration(val, calibration, "pm10");
         }
         return val;
       });
