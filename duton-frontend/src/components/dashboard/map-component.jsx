@@ -63,17 +63,26 @@ function sensorNumber(sensor) {
     return sensor?.device_id || sensor?.sensor_id || sensor?.identifier || "--"
 }
 
+function hexToRgba(hex, alpha) {
+    const h = hex.replace("#", "")
+    const r = parseInt(h.slice(0, 2), 16)
+    const g = parseInt(h.slice(2, 4), 16)
+    const b = parseInt(h.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function createMarkerIcon(sensor) {
     const value = markerValue(sensor)
     const label = value === null ? "--" : String(Math.round(value))
     const { bg, fg } = markerStyle(value)
-    const fontSize = label.length >= 3 ? 8 : 10
+    const fontSize = label.length >= 3 ? 11 : 13
+    const halo = `0 0 0 6px ${hexToRgba(bg, 0.45)}, 0 0 0 11px ${hexToRgba(bg, 0.22)}`
 
     return L.divIcon({
         className: "aqi-marker",
-        iconSize: [26, 26],
-        iconAnchor: [15, 15],
-        html: `<div class="aqi-marker-bubble" style="background:${bg};color:${fg};font-size:${fontSize}px">${label}</div>`,
+        iconSize: [56, 56],
+        iconAnchor: [28, 28],
+        html: `<div class="aqi-marker-bubble" style="background:${bg};color:${fg};font-size:${fontSize}px;box-shadow:${halo}">${label}</div>`,
     })
 }
 
@@ -82,7 +91,7 @@ export default function MapComponent({ sensors }) {
     const [open, setOpen] = useState(false)
 
     // Default center (Mumbai coordinates as fallback)
-    const defaultCenter = [19.076, 72.8777]
+    const defaultCenter = [18.6187, 73.8037]
 
     // Filter valid sensors with coordinates
     const validSensors = useMemo(() => {

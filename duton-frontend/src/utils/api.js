@@ -491,38 +491,25 @@ export const fetchChartData = async (sensorIdentifier, timeRange = "1m", dataTyp
       datasetMap[key] = dataset.data || []
     })
 
-    // Check if calibration exists for this sensor and is not default
-    let shouldApplyCalibration = false
+    // Apply each pollutant only when its own coefficients are not the identity defaults
+    let applyPm25 = false
+    let applyPm10 = false
+    const { applyCalibration, isPollutantCalibrated } = await import("@/utils/calibration")
     if (sensorIdentifier) {
       try {
         const calibration = await fetchSensorCalibration(sensorIdentifier)
 
-        // Check if calibration is set (not default values)
-        // Default: k0=0, k1=1, variationMin=0, variationMax=0
         if (calibration) {
-          const isPm25Calibrated = calibration.pm25 && (
-            calibration.pm25.k0 !== 0 ||
-            calibration.pm25.k1 !== 1 ||
-            calibration.pm25.variationMin !== 0 ||
-            calibration.pm25.variationMax !== 0
-          )
-          const isPm10Calibrated = calibration.pm10 && (
-            calibration.pm10.k0 !== 0 ||
-            calibration.pm10.k1 !== 1 ||
-            calibration.pm10.variationMin !== 0 ||
-            calibration.pm10.variationMax !== 0
-          )
-          shouldApplyCalibration = isPm25Calibrated || isPm10Calibrated
+          applyPm25 = isPollutantCalibrated(calibration, "pm25")
+          applyPm10 = isPollutantCalibrated(calibration, "pm10")
         }
       } catch (error) {
         // If calibration fetch fails (404 or error), no calibration exists - use raw data
         // This is expected behavior, so we don't log it as a warning
-        shouldApplyCalibration = false
+        applyPm25 = false
+        applyPm10 = false
       }
     }
-
-    // Apply calibration only if it exists and is not default
-    const { applyCalibration } = await import("@/utils/calibration")
 
     return chartData.labels.map((label, index) => {
       const rawPm25 = datasetMap.pm25?.[index] ?? null
@@ -531,10 +518,10 @@ export const fetchChartData = async (sensorIdentifier, timeRange = "1m", dataTyp
       return {
         time: label,
         timestamp: chartData.timestamps?.[index] || label,
-        pm25: shouldApplyCalibration && rawPm25 !== null
+        pm25: applyPm25 && rawPm25 !== null
           ? applyCalibration(rawPm25, "pm25", sensorIdentifier)
           : rawPm25,
-        pm10: shouldApplyCalibration && rawPm10 !== null
+        pm10: applyPm10 && rawPm10 !== null
           ? applyCalibration(rawPm10, "pm10", sensorIdentifier)
           : rawPm10,
         temperature: datasetMap.temperature?.[index] ?? null,

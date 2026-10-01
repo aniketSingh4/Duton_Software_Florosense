@@ -14,6 +14,7 @@ function getTimeGreeting(date) {
   const hour = date.getHours()
   if (hour >= 5 && hour < 12) return "Good Morning"
   if (hour >= 12 && hour < 17) return "Good Afternoon"
+  if(hour >= 17 && hour <  21) return "Good Evening"
   return "Good Night"
 }
 
@@ -67,10 +68,10 @@ export default function DashboardPage() {
           <section className="mb-6 w-full max-w-7xl mx-auto rounded-md border border-border bg-muted px-4 py-3.5 md:px-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <span className="inline-flex items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-[11px] font-medium tracking-wide text-foreground">
+                {/* <span className="inline-flex items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-[11px] font-medium tracking-wide text-foreground">
                   {isAdmin ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
                   {roleLabel}
-                </span>
+                </span> */}
                 <h1 className="mt-2 text-xl font-semibold tracking-tight text-foreground md:text-2xl">
                   {greeting},{" "}
                   <span className="text-primary">{displayName}</span>

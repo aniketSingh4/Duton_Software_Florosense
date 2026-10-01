@@ -12,8 +12,78 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { fetchUserSensors } from "@/utils/api"
+import { normalizeCalibration } from "@/utils/calibration"
 import { toast } from "sonner"
 import { Save, X, RotateCcw } from "lucide-react"
+
+const DEFAULT_FORM = {
+  rh_strength_a: 0,
+  rh_curvature_b: 0,
+  initial_offset_k0: 0,
+  fine_multiplier_k1: 1,
+}
+
+const DEFAULT_CALIBRATION_FORM = {
+  pm25: { ...DEFAULT_FORM },
+  pm10: { ...DEFAULT_FORM },
+}
+
+const FIELDS = [
+  { id: "rh_strength_a", label: "RH Strength (a)", field: "rh_strength_a", placeholder: "0", description: "Variable a in calibration formula" },
+  { id: "rh_curvature_b", label: "RH Curvature (b)", field: "rh_curvature_b", placeholder: "0", description: "Variable b in calibration formula" },
+  { id: "initial_offset_k0", label: "Initial Offset (K0)", field: "initial_offset_k0", placeholder: "0", description: "K0 in calibration formula" },
+  { id: "fine_multiplier_k1", label: "Fine Multiplier (K1)", field: "fine_multiplier_k1", placeholder: "1", description: "K1 in calibration formula" },
+]
+
+const toNumber = (value, fallback) => {
+  if (value === "" || value === null || value === undefined || Number.isNaN(Number(value))) {
+    return fallback
+  }
+  return Number(value)
+}
+
+const storedToForm = (config) => ({
+  rh_strength_a: config?.variationMin ?? 0,
+  rh_curvature_b: config?.variationMax ?? 0,
+  initial_offset_k0: config?.k0 ?? 0,
+  fine_multiplier_k1: config?.k1 ?? 1,
+})
+
+const formToStored = (fields) => ({
+  k0: toNumber(fields?.initial_offset_k0, 0),
+  k1: toNumber(fields?.fine_multiplier_k1, 1),
+  variationMin: toNumber(fields?.rh_strength_a, 0),
+  variationMax: toNumber(fields?.rh_curvature_b, 0),
+})
+
+const formFromSaved = (saved) => {
+  const normalized = normalizeCalibration(saved)
+  return {
+    pm25: storedToForm(normalized.pm25),
+    pm10: storedToForm(normalized.pm10),
+  }
+}
+
+const buildPayload = (formState, loadedState, target) => {
+  if (target === "all") {
+    const shared = formToStored(formState.pm25)
+    return {
+      pm25: shared,
+      pm10: { ...shared },
+    }
+  }
+
+  return {
+    pm25: formToStored(target === "pm25" ? formState.pm25 : loadedState.pm25),
+    pm10: formToStored(target === "pm10" ? formState.pm10 : loadedState.pm10),
+  }
+}
+
+const targetLabel = (target) => {
+  if (target === "pm25") return "PM2.5"
+  if (target === "pm10") return "PM10"
+  return "All"
+}
 
 export function CalibrationSetupDialog({
   open,
@@ -24,18 +94,16 @@ export function CalibrationSetupDialog({
   const [selectedSensorId, setSelectedSensorId] = useState("")
   const [sensors, setSensors] = useState([])
   const [isLoadingSensors, setIsLoadingSensors] = useState(false)
-  const [calibration, setCalibration] = useState({
-    rh_strength_a: 0,
-    rh_curvature_b: 0,
-    initial_offset_k0: 0,
-    fine_multiplier_k1: 1,
-  })
+  const [calibrationTarget, setCalibrationTarget] = useState("all")
+  const [calibration, setCalibration] = useState(DEFAULT_CALIBRATION_FORM)
+  const [loadedCalibration, setLoadedCalibration] = useState(DEFAULT_CALIBRATION_FORM)
   const [isLoading, setIsLoading] = useState(false)
   const isRestrictedToSingleSensor = Boolean(restrictedSensorId)
 
   // Fetch sensors when dialog opens
   useEffect(() => {
     if (open) {
+      setCalibrationTarget("all")
       const loadSensors = async () => {
         setIsLoadingSensors(true)
         try {
@@ -81,59 +149,49 @@ export function CalibrationSetupDialog({
         try {
           const { fetchSensorCalibration } = await import("@/utils/api")
           const saved = await fetchSensorCalibration(selectedSensorId)
-
-          let calibrationData = null
-          if (saved) {
-            if (saved.calibration && typeof saved.calibration === 'object') {
-              calibrationData = saved.calibration
-            } else if (saved.data && typeof saved.data === 'object') {
-              calibrationData = saved.data
-            } else if (typeof saved === 'object' && 'rh_strength_a' in saved) {
-              calibrationData = saved
-            }
+          const form = saved ? formFromSaved(saved) : {
+            pm25: { ...DEFAULT_FORM },
+            pm10: { ...DEFAULT_FORM },
           }
-
-          if (calibrationData && typeof calibrationData === 'object') {
-            setCalibration({
-              rh_strength_a: calibrationData.rh_strength_a ?? 0,
-              rh_curvature_b: calibrationData.rh_curvature_b ?? 0,
-              initial_offset_k0: calibrationData.initial_offset_k0 ?? 0,
-              fine_multiplier_k1: calibrationData.fine_multiplier_k1 ?? 1,
-            })
-          } else {
-            setCalibration({
-              rh_strength_a: 0,
-              rh_curvature_b: 0,
-              initial_offset_k0: 0,
-              fine_multiplier_k1: 1,
-            })
-          }
+          setCalibration(form)
+          setLoadedCalibration(form)
         } catch (error) {
-          setCalibration({
-            rh_strength_a: 0,
-            rh_curvature_b: 0,
-            initial_offset_k0: 0,
-            fine_multiplier_k1: 1,
-          })
+          const form = {
+            pm25: { ...DEFAULT_FORM },
+            pm10: { ...DEFAULT_FORM },
+          }
+          setCalibration(form)
+          setLoadedCalibration(form)
         }
       }
       loadCalibration()
     } else if (open && !selectedSensorId) {
-      setCalibration({
-        rh_strength_a: 0,
-        rh_curvature_b: 0,
-        initial_offset_k0: 0,
-        fine_multiplier_k1: 1,
-      })
+      const form = {
+        pm25: { ...DEFAULT_FORM },
+        pm10: { ...DEFAULT_FORM },
+      }
+      setCalibration(form)
+      setLoadedCalibration(form)
     }
   }, [open, selectedSensorId])
 
-  const handleChange = (field, value) => {
+  const handleChange = (pollutant, field, value) => {
     const numValue = value === "" ? "" : Number(value)
     setCalibration((prev) => ({
       ...prev,
-      [field]: numValue,
+      [pollutant]: {
+        ...prev[pollutant],
+        [field]: numValue,
+      },
     }))
+  }
+
+  const sensorNameFor = () => {
+    const selectedSensor = sensors.find(s => {
+      const sensorId = s.sensor_id || s.device_id || s.identifier || s.id
+      return sensorId === selectedSensorId
+    })
+    return selectedSensor?.name || selectedSensor?.sensor_id || selectedSensorId
   }
 
   const handleSave = async () => {
@@ -146,14 +204,15 @@ export function CalibrationSetupDialog({
 
     setIsLoading(true)
     try {
+      const payload = buildPayload(calibration, loadedCalibration, calibrationTarget)
       const { saveSensorCalibration } = await import("@/utils/api")
-      await saveSensorCalibration(selectedSensorId, calibration)
-      const selectedSensor = sensors.find(s => {
-        const sensorId = s.sensor_id || s.device_id || s.identifier || s.id
-        return sensorId === selectedSensorId
-      })
-      const sensorName = selectedSensor?.name || selectedSensor?.sensor_id || selectedSensorId
-      toast.success(`Calibration settings saved for ${sensorName}`, {
+      await saveSensorCalibration(selectedSensorId, payload)
+
+      const savedForm = formFromSaved(payload)
+      setCalibration(savedForm)
+      setLoadedCalibration(savedForm)
+
+      toast.success(`Calibration settings saved for ${targetLabel(calibrationTarget)} on ${sensorNameFor()}`, {
         position: "bottom-right",
       })
 
@@ -189,25 +248,36 @@ export function CalibrationSetupDialog({
 
     setIsLoading(true)
     try {
-      const defaultCalibration = {
-        rh_strength_a: 0,
-        rh_curvature_b: 0,
-        initial_offset_k0: 0,
-        fine_multiplier_k1: 1,
+      const nextForm = calibrationTarget === "all"
+        ? {
+          pm25: { ...DEFAULT_FORM },
+          pm10: { ...DEFAULT_FORM },
+        }
+        : {
+          pm25: calibrationTarget === "pm25" ? { ...DEFAULT_FORM } : { ...loadedCalibration.pm25 },
+          pm10: calibrationTarget === "pm10" ? { ...DEFAULT_FORM } : { ...loadedCalibration.pm10 },
+        }
+      const payload = {
+        pm25: formToStored(nextForm.pm25),
+        pm10: formToStored(nextForm.pm10),
       }
 
       const { saveSensorCalibration } = await import("@/utils/api")
-      await saveSensorCalibration(selectedSensorId, defaultCalibration)
-      setCalibration(defaultCalibration)
+      await saveSensorCalibration(selectedSensorId, payload)
+      setCalibration(nextForm)
+      setLoadedCalibration(nextForm)
 
-      const selectedSensor = sensors.find(s => {
-        const sensorId = s.sensor_id || s.device_id || s.identifier || s.id
-        return sensorId === selectedSensorId
-      })
-      const sensorName = selectedSensor?.name || selectedSensor?.sensor_id || selectedSensorId
-      toast.success(`Calibration reset to default for ${sensorName}`, {
+      toast.success(`Calibration reset to default for ${targetLabel(calibrationTarget)} on ${sensorNameFor()}`, {
         position: "bottom-right",
       })
+
+      if (typeof window !== "undefined") {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("calibrationSaved", {
+            detail: { sensorId: selectedSensorId }
+          }))
+        }, 100)
+      }
     } catch (error) {
       console.error("Error resetting calibration:", error)
       toast.error(error?.message || "Failed to reset calibration settings", {
@@ -224,12 +294,12 @@ export function CalibrationSetupDialog({
     onOpenChange(false)
   }
 
-  const fields = [
-    { id: "rh_strength_a", label: "RH Strength (a)", field: "rh_strength_a", placeholder: "0", description: "Variable a in calibration formula" },
-    { id: "rh_curvature_b", label: "RH Curvature (b)", field: "rh_curvature_b", placeholder: "0", description: "Variable b in calibration formula" },
-    { id: "initial_offset_k0", label: "Initial Offset (K0)", field: "initial_offset_k0", placeholder: "0", description: "K0 in calibration formula" },
-    { id: "fine_multiplier_k1", label: "Fine Multiplier (K1)", field: "fine_multiplier_k1", placeholder: "1", description: "K1 in calibration formula" },
-  ]
+  const activePollutant = calibrationTarget === "pm10" ? "pm10" : "pm25"
+  const sectionTitle = calibrationTarget === "all"
+    ? "Calibration Parameters"
+    : calibrationTarget === "pm25"
+      ? "PM2.5 Calibration Parameters"
+      : "PM10 Calibration Parameters"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -237,7 +307,7 @@ export function CalibrationSetupDialog({
         <DialogHeader>
           <DialogTitle>Calibration Setup</DialogTitle>
           <DialogDescription>
-            Configure calibration parameters for sensor. These values apply to both PM2.5 and PM10 readings.
+            Choose All, PM2.5, or PM10. All applies one set of values to both readings. PM2.5 and PM10 can also be calibrated on their own.
           </DialogDescription>
         </DialogHeader>
 
@@ -277,27 +347,49 @@ export function CalibrationSetupDialog({
               <p className="text-muted-foreground">Please select a sensor to configure calibration</p>
             </div>
           ) : (
-            <div className="space-y-4 border rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Calibration Parameters</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {fields.map((field) => (
-                  <div key={field.id} className="space-y-2">
-                    <Label htmlFor={field.id}>{field.label}</Label>
-                    <Input
-                      id={field.id}
-                      type="number"
-                      step="any"
-                      value={calibration[field.field]}
-                      onChange={(e) => handleChange(field.field, e.target.value)}
-                      placeholder={field.placeholder}
-                    />
-                    {field.description && (
-                      <p className="text-xs text-muted-foreground">{field.description}</p>
-                    )}
-                  </div>
-                ))}
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="calibration-target">Calibrate</Label>
+                <select
+                  id="calibration-target"
+                  value={calibrationTarget}
+                  onChange={(e) => setCalibrationTarget(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoading}
+                >
+                  <option value="all">All</option>
+                  <option value="pm25">PM2.5</option>
+                  <option value="pm10">PM10</option>
+                </select>
               </div>
-            </div>
+
+              <div className="space-y-4 border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">{sectionTitle}</h3>
+                {calibrationTarget === "all" && (
+                  <p className="text-sm text-muted-foreground -mt-2">
+                    These values apply to both PM2.5 and PM10.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  {FIELDS.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label htmlFor={field.id}>{field.label}</Label>
+                      <Input
+                        id={field.id}
+                        type="number"
+                        step="any"
+                        value={calibration[activePollutant][field.field]}
+                        onChange={(e) => handleChange(activePollutant, field.field, e.target.value)}
+                        placeholder={field.placeholder}
+                      />
+                      {field.description && (
+                        <p className="text-xs text-muted-foreground">{field.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -323,4 +415,3 @@ export function CalibrationSetupDialog({
     </Dialog>
   )
 }
-

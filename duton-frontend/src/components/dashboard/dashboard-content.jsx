@@ -1340,8 +1340,8 @@ export function DashboardContent() {
           </TabsContent>
 
           {/* Group 2: Alerts, AMC */}
-          <TabsContent value="monitoring" className="space-y-6">
-            <Tabs defaultValue="alerts" className="w-full">
+          <TabsContent value="monitoring" className="mx-auto w-full max-w-7xl space-y-6">
+            <Tabs defaultValue="alerts" className="w-full min-w-0">
               <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-3">
                 <TabsTrigger value="alerts">
                   <Bell className="h-4 w-4 mr-2" />
