@@ -8,12 +8,18 @@ const router = express.Router();
 // Get alert history (admin only) - searchable, filterable, paginated
 router.get("/logs", verifyUserToken, requireAdmin, async (req, res, next) => {
   try {
+    const parsedDays = parseInt(req.query.days, 10);
+    const days = Number.isFinite(parsedDays)
+      ? Math.min(Math.max(parsedDays, 1), 15)
+      : 15;
+
     const filters = {
       alert_type: req.query.alert_type || null,
       alert_status: req.query.alert_status || null,
       search: req.query.search || null,
       skip: parseInt(req.query.skip) || 0,
-      limit: Math.min(parseInt(req.query.limit) || 20, 100),
+      limit: Math.min(parseInt(req.query.limit) || 10, 100),
+      days,
     };
 
     const { logs, totalCount } = await database.getAlertLogs(filters);

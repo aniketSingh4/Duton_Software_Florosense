@@ -156,6 +156,7 @@ export async function connect() {
   await createIndexSafe(alertLogsCollection, { created_at: -1 });
   await createIndexSafe(alertLogsCollection, { alert_type: 1 });
   await createIndexSafe(alertLogsCollection, { alert_status: 1 });
+  await createIndexSafe(alertLogsCollection, { alert_status: 1, created_at: -1 });
 }
 
 export async function disconnect() {
@@ -2580,36 +2581,83 @@ export async function resolveOpenAlerts(sensorId, alertType) {
   return result.modifiedCount;
 }
 
+export async function ensureOpenAlertLog(entry) {
+  _ensureAlertCollections();
+  const existing = await alertLogsCollection.findOne({
+    sensor_id: entry.sensor_id,
+    alert_type: entry.alert_type,
+    alert_status: "open",
+  });
+
+  if (existing) {
+    const updates = {};
+    if (entry.offline_duration_hours != null) {
+      updates.offline_duration_hours = entry.offline_duration_hours;
+    }
+    if (entry.reading_value != null) {
+      updates.reading_value = entry.reading_value;
+    }
+    if (Object.keys(updates).length > 0) {
+      await alertLogsCollection.updateOne({ _id: existing._id }, { $set: updates });
+      return _serializeAlertLog({ ...existing, ...updates });
+    }
+    return _serializeAlertLog(existing);
+  }
+
+  return createAlertLog(entry);
+}
+
 export async function getAlertLogs(filters = {}) {
   _ensureAlertCollections();
-  const query = {};
+
+  const lookbackDays = Number.isFinite(filters.days) ? filters.days : 15;
+  const since = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+  const sinceIso = since.toISOString();
+
+  // Recent logs (Date or ISO-string created_at) plus any still-open alerts,
+  // so long-running offline sensors stay visible.
+  const query = {
+    $and: [
+      {
+        $or: [
+          { created_at: { $gte: since } },
+          { created_at: { $gte: sinceIso } },
+          { alert_status: "open" },
+        ],
+      },
+    ],
+  };
 
   if (filters.alert_type) {
-    query.alert_type = filters.alert_type;
+    query.$and.push({ alert_type: filters.alert_type });
   }
   if (filters.alert_status) {
-    query.alert_status = filters.alert_status;
+    query.$and.push({ alert_status: filters.alert_status });
   }
   if (filters.search) {
     const searchRegex = { $regex: filters.search, $options: "i" };
-    query.$or = [
-      { sensor_id: searchRegex },
-      { client_name: searchRegex },
-      { site_name: searchRegex },
-      { recipients: searchRegex },
-    ];
+    query.$and.push({
+      $or: [
+        { sensor_id: searchRegex },
+        { client_name: searchRegex },
+        { site_name: searchRegex },
+        { recipients: searchRegex },
+      ],
+    });
   }
 
   const skip = Number.isFinite(filters.skip) ? filters.skip : 0;
   const limit = Number.isFinite(filters.limit) ? filters.limit : 50;
 
-  const totalCount = await alertLogsCollection.countDocuments(query);
-  const logs = await alertLogsCollection
-    .find(query)
-    .sort({ created_at: -1 })
-    .skip(skip)
-    .limit(limit)
-    .toArray();
+  const [totalCount, logs] = await Promise.all([
+    alertLogsCollection.countDocuments(query),
+    alertLogsCollection
+      .find(query)
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray(),
+  ]);
 
   return {
     logs: logs.map((log) => _serializeAlertLog(log)),

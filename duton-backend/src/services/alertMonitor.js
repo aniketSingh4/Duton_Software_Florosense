@@ -127,7 +127,18 @@ async function checkOfflineStatus(sensor, lastReading, state, now, getRecipients
   if (hoursSinceLastAlert >= intervalHours) {
     const recipients = await getRecipients();
     if (recipients.to.length === 0) {
-      return true; // offline, but nobody to notify (unassigned site or alerts disabled)
+      await database.ensureOpenAlertLog({
+        alert_type: "offline",
+        sensor_id: sensor.sensor_id,
+        client_name: sensor.client_name || null,
+        site_name: sensor.site_name || null,
+        site_address: sensor.site_address || null,
+        offline_duration_hours: Math.floor(offlineHours),
+        recipients: [],
+        cc: [],
+        delivery_status: "skipped",
+      });
+      return true; // offline, but nobody to email (unassigned site or alerts disabled)
     }
 
     await sendAndLogAlert(sensor, recipients, {
