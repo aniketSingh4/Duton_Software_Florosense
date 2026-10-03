@@ -36,6 +36,7 @@ const getAuthHeaders = () => {
 }
 
 const PAGE_SIZE = 15
+const LOOKBACK_DAYS = 15
 
 const TYPE_LABELS = {
   all: "All Types",
@@ -50,7 +51,11 @@ const STATUS_LABELS = {
 }
 
 const fetchAlertLogs = async ({ skip = 0, limit = PAGE_SIZE, search = "", alertType = "", alertStatus = "" } = {}) => {
-  const params = new URLSearchParams({ skip: String(skip), limit: String(limit) })
+  const params = new URLSearchParams({
+    skip: String(skip),
+    limit: String(limit),
+    days: String(LOOKBACK_DAYS),
+  })
   if (search) params.set("search", search)
   if (alertType && alertType !== "all") params.set("alert_type", alertType)
   if (alertStatus && alertStatus !== "all") params.set("alert_status", alertStatus)
@@ -82,7 +87,8 @@ const formatDateTime = (value) => {
 
 export function AlertLog() {
   const [logs, setLogs] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -90,13 +96,18 @@ export function AlertLog() {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const searchTimeoutRef = useRef(null)
+  const hasLoadedRef = useRef(false)
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const rangeEnd = Math.min(page * PAGE_SIZE, totalCount)
 
   const loadLogs = useCallback(async () => {
-    setIsLoading(true)
+    if (hasLoadedRef.current) {
+      setIsRefreshing(true)
+    } else {
+      setIsLoading(true)
+    }
     try {
       const skip = (page - 1) * PAGE_SIZE
       const { logs: fetchedLogs, totalCount: count } = await fetchAlertLogs({
@@ -108,10 +119,12 @@ export function AlertLog() {
       })
       setLogs(fetchedLogs)
       setTotalCount(count)
+      hasLoadedRef.current = true
     } catch (error) {
       toast.error(error.message || "Failed to load alert logs")
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }, [page, search, typeFilter, statusFilter])
 
@@ -144,9 +157,14 @@ export function AlertLog() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Alert Log</h2>
-        <Button variant="outline" onClick={loadLogs} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+        <div>
+          <h2 className="text-2xl font-bold">Alert Log</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Showing open alerts and alerts from the last {LOOKBACK_DAYS} days.
+          </p>
+        </div>
+        <Button variant="outline" onClick={loadLogs} disabled={isLoading || isRefreshing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading || isRefreshing ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
@@ -206,8 +224,8 @@ export function AlertLog() {
         </Select>
       </div>
 
-      <Card>
-        {isLoading ? (
+      <Card className={isRefreshing ? "opacity-70" : undefined}>
+        {isLoading && logs.length === 0 ? (
           <div className="flex items-center justify-center p-8">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
@@ -215,7 +233,7 @@ export function AlertLog() {
           <div className="p-8 text-center text-muted-foreground">
             {search || typeFilter !== "all" || statusFilter !== "all"
               ? "No alerts match the current filters."
-              : "No alerts have been generated yet."}
+              : `No open alerts or alerts in the last ${LOOKBACK_DAYS} days.`}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -268,8 +286,20 @@ export function AlertLog() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={log.delivery_status === "sent" ? "default" : "destructive"}>
-                        {log.delivery_status === "sent" ? "Sent" : "Failed"}
+                      <Badge
+                        variant={
+                          log.delivery_status === "sent"
+                            ? "default"
+                            : log.delivery_status === "skipped" || log.delivery_status === "logged"
+                              ? "outline"
+                              : "destructive"
+                        }
+                      >
+                        {log.delivery_status === "sent"
+                          ? "Sent"
+                          : log.delivery_status === "skipped" || log.delivery_status === "logged"
+                            ? "Logged"
+                            : "Failed"}
                       </Badge>
                     </TableCell>
                     <TableCell>
